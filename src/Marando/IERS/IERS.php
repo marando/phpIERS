@@ -524,6 +524,9 @@ class IERS {
    * @return boolean
    */
   protected function filesExist() {
+    if (!file_exists($this->storage('.gitignore')))
+      file_put_contents($this->storage('.gitignore'), '*');
+
     foreach (static::FILES as $file)
       if (!file_exists($this->storage($file)))
         return false;
