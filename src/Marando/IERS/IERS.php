@@ -305,7 +305,28 @@ class IERS {
   }
 
   public function leapSec() {
+    // Load data file
+    $file = new \SplFileObject($this->storage('tai-utc.dat'));
 
+    $taiUTC;
+    while ($file->valid()) {
+      $line = $file->getCurrentLine();
+
+      // Check for empty line
+      if (trim($line) == '')
+        break;
+
+      // Get JD and leap seconds as of that JD
+      $jd     = (float)substr($line, 17, 9);
+      $taiUTC = (float)substr($line, 38, 10);
+
+      // If the leap second JD exeeds or is = to this instance, break
+      if ($jd >= $this->jd)
+        break;
+    }
+
+    // Return leap seconds
+    return $taiUTC;
   }
 
   // // // Protected
@@ -327,6 +348,10 @@ class IERS {
       $line = $file->getCurrentLine();
       $mLine--;
     }
+
+    $mLine--;
+    $file->seek($mLine);
+    $line = $file->getCurrentLine();
 
     // YMD -> JD and return
     $y = (int)substr($line, 1, 4);
@@ -454,7 +479,7 @@ class IERS {
 
     // Reset pointer if within INTERP_COUNT on lower bound
     if ($p < static::INTERP_COUNT)
-      $p = static::INTERP_COUNT;
+      $p = static::INTERP_COUNT + 3;
 
     // Reset pointer if within INTERP_COUNT on upper bound
     if ($p + static::INTERP_COUNT > $maxLine)
@@ -653,7 +678,7 @@ class IERS {
    * @param  float $id  Day
    * @param  float $fd  Day fraction
    * @return int        Status code
-   * 
+   *
    */
   private static function iauJd2cal($dj1, $dj2, &$iy, &$im, &$id, &$fd) {
     /* Minimum and maximum allowed JD */

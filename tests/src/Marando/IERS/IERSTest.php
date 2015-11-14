@@ -127,4 +127,22 @@ class IERSTest extends \PHPUnit_Framework_TestCase {
     }
   }
 
+  /**
+   * @covers Marando\IERS\IERS::leapSec
+   */
+  public function testLeapSec() {
+    $tests = [
+        [2441317.5, 10.0],
+        [2438334.5, 1.9458580],
+        [2456109.5, 35],
+        [2456109.4, 35],
+    ];
+
+    foreach ($tests as $t) {
+      $jd   = $t[0];
+      $lSec = $t[1];
+      $this->assertEquals($lSec, IERS::jd($jd)->leapSec(), $jd);
+    }
+  }
+
 }
