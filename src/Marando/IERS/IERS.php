@@ -39,7 +39,7 @@ class IERS {
   /**
    * Hourly interval to check for data updates from IERS servers
    */
-  const UPDATE_INTVL_H = 12;
+  const UPDATE_INTVL_H = 6;
 
   /**
    * Data files needed by this class
@@ -292,12 +292,15 @@ class IERS {
    * @return float|boolean Returns false on error
    */
   public function deltaT() {
+    // Historic ΔT
     if ($this->jd < 2441714.5)
       return $this->deltaT_historic();
 
-    if ($this->jd > $this->lastDeltaTjd())
+    // Predictive ΔT
+    if ($this->jd > $this->deltaT_lastJD())
       return $this->deltaT_predict();
 
+    // Base ΔT data file
     return $this->deltaT_base();
   }
 
@@ -307,11 +310,17 @@ class IERS {
 
   // // // Protected
 
-  protected function lastDeltaTjd() {
+  /**
+   * Finds the final Julian day count in the deltat.data file
+   * @return float
+   */
+  protected function deltaT_lastJD() {
+    // Seek to maximum line
     $mLine = count(file($this->storage('deltat.data'))) - 1;
     $file  = new \SplFileObject($this->storage('deltat.data'));
     $file->seek($mLine);
 
+    // Get the line until it's not empty stepping back 1 line if so
     $line = $file->getCurrentLine();
     while (trim($line) == '') {
       $file->seek($mLine);
@@ -319,40 +328,150 @@ class IERS {
       $mLine--;
     }
 
+    // YMD -> JD and return
     $y = (int)substr($line, 1, 4);
     $m = (int)substr($line, 6, 2);
     $d = (int)substr($line, 9, 2);
     static::iauCal2jd($y, $m, $d, $djm0, $djm);
-
     return $djm0 + $djm;
   }
 
-  protected function deltaT_predict() {
+  /**
+   * Interpolates the value of ΔΤ for a historic date
+   * @return float|boolean Returns false if an error has occured
+   */
+  protected function deltaT_historic() {
+    // Get calendar date
     static::iauJd2cal(2400000.5, $this->mjd, $y, $m, $d, $fd);
 
-    $file = new \SplFileObject($this->storage('deltat.preds'));
+    // Load file and get max line
+    $file  = new \SplFileObject($this->storage('historic_deltat.data'));
+    $mLine = count(file($file->getRealPath())) - 1;
 
+    // Determine pointer, return false if out of range
+    $p = ($y - 1657) * 2 + 2;
+    if ($p < 0)
+      return false;
+
+    // Reset pointer if within INTERP_COUNT range on lower bound
+    if ($p < static::INTERP_COUNT)
+      $p = static::INTERP_COUNT;
+
+    // Reset pointer if within INTERP_COUNTn range on upper bound
+    if ($p + static::INTERP_COUNT > $mLine)
+      $p = $mLine - static::INTERP_COUNT;
+
+    // Compile dataset
+    $ds = [];
+    for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+      // Seek pointer and get line
+      $file->seek($i);
+      $line = $file->getCurrentLine();
+
+      // Year and ΔΤ value as float
+      $y  = (float)substr($line, 0, 8);
+      $ΔT = (float)substr($line, 13, 6);
+
+      // Determine month, and compute JD
+      $m  = intval($y) == $y ? 1 : 6;
+      $jd = static::iauCal2jd((int)$y, $m, 1, $djm0, $djm);
+
+      // Insert data
+      $ds[$i - $p + static::INTERP_COUNT]['x'] = $djm0 + $djm;
+      $ds[$i - $p + static::INTERP_COUNT]['y'] = $ΔT;
+    }
+
+    // Interpolate value of ΔT
+    return $this->lagrangeInterp($this->jd, $ds);
+  }
+
+  /**
+   * Interpolates the value of ΔΤ for a current date
+   * @return float|boolean Returns false if an error has occured
+   */
+  protected function deltaT_base() {
+    // Get Julian day count
+    static::iauJd2cal(2400000.5, $this->mjd, $iy, $im, $id, $fd);
+
+    // Determine pointer, return false if out of range
+    $p = ($iy - 1973) * 12 + $im - 2;
+    if ($p < 0)
+      return false;
+
+    // Load file, and get max line count
+    $file  = new \SplFileObject($this->storage('deltat.data'));
+    $mLine = count(file($file->getRealPath())) - 1;
+
+    // Reset pointer if within INTERP_COUNT on lower bound
+    if ($p < static::INTERP_COUNT)
+      $p = static::INTERP_COUNT;
+
+    // Reset pointer if within INTERP_COUNT on upper bound
+    if ($p + static::INTERP_COUNT > $mLine)
+      $p = $mLine - static::INTERP_COUNT;
+
+    // Compile dataset
+    $ds = [];
+    for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+      // Seek pointer and get line
+      $file->seek($i);
+      $line = $file->getCurrentLine();
+
+      // YMD -> JD
+      $y = (int)substr($line, 1, 4);
+      $m = (int)substr($line, 6, 2);
+      $d = (int)substr($line, 9, 2);
+      static::iauCal2jd($y, $m, $d, $djm0, $djm);
+
+      // Parse value of ΔT
+      $dT = (float)substr($line, 13, 7);
+
+      // Insert data
+      $ds[$i - $p + static::INTERP_COUNT]['x'] = $djm0 + $djm;
+      $ds[$i - $p + static::INTERP_COUNT]['y'] = $dT;
+    }
+
+    // Interpolate value of ΔT
+    return $this->lagrangeInterp($this->jd, $ds);
+  }
+
+  /**
+   * Interpolates the value of ΔΤ for a future date
+   * @return float|boolean Returns false if an error has occured
+   */
+  protected function deltaT_predict() {
+    // Get Julian day count
+    static::iauJd2cal(2400000.5, $this->mjd, $y, $m, $d, $fd);
+
+    // Determine pointer, return false if out of range
     $p = ($y - 2015) * 4 + 2;
     if ($p < 0)
       return false;
 
-    if ($p == 0)
+    // Load file
+    $file    = new \SplFileObject($this->storage('deltat.preds'));
+    $maxLine = count(file($file->getRealPath())) - 1;
+
+    // Reset pointer if within INTERP_COUNT on lower bound
+    if ($p < static::INTERP_COUNT)
       $p = static::INTERP_COUNT;
 
-    $maxLine = count(file($file->getRealPath())) - 1;
+    // Reset pointer if within INTERP_COUNT on upper bound
     if ($p + static::INTERP_COUNT > $maxLine)
-      $p       = $maxLine - static::INTERP_COUNT;
+      $p = $maxLine - static::INTERP_COUNT;
 
-    $file->seek($p);
-
+    // Compile dataset
     $ds = [];
     for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+      // Seek pointer and get line
       $file->seek($i);
       $line = $file->getCurrentLine();
 
+      // Year as fraction and ΔT value
       $y  = (float)substr($line, 1, 7);
       $ΔT = (float)substr($line, 14, 6);
 
+      // Determine month for fractional year
       $m;
       if ($y - intval($y) == 0)
         $m = 1;
@@ -363,86 +482,16 @@ class IERS {
       else if ($y - intval($y) <= 0.75)
         $m = 9;
 
+      // YMD -> JD
       static::iauCal2jd(intval($y), $m, 1, $djm0, $djm);
 
-      $ds[$i - $p + static::INTERP_COUNT]['x'] = $djm0 + $djm;
-      $ds[$i - $p + static::INTERP_COUNT]['y'] = $ΔT;
-    }
-    
-    return $this->lagrangeInterp($this->jd, $ds);
-  }
-
-  protected function deltaT_historic() {
-    static::iauJd2cal(2400000.5, $this->mjd, $y, $m, $d, $fd);
-
-    $file = new \SplFileObject($this->storage('historic_deltat.data'));
-
-    $p = ($y - 1657) * 2 + 2;
-    if ($p < 0)
-      return false;
-
-    if ($p == 0)
-      $p = static::INTERP_COUNT;
-
-    $maxLine = count(file($file->getRealPath())) - 1;
-    if ($p + static::INTERP_COUNT > $maxLine)
-      $p       = $maxLine - static::INTERP_COUNT;
-
-    $file->seek($p);
-
-    $ds = [];
-    for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
-      $file->seek($i);
-      $line = $file->getCurrentLine();
-
-      $y  = (float)substr($line, 0, 8);
-      $ΔT = (float)substr($line, 13, 6);
-
-      $m  = intval($y) == $y ? 1 : 6;
-      $jd = static::iauCal2jd((int)$y, $m, 1, $djm0, $djm);
-
+      // Insert data
       $ds[$i - $p + static::INTERP_COUNT]['x'] = $djm0 + $djm;
       $ds[$i - $p + static::INTERP_COUNT]['y'] = $ΔT;
     }
 
+    // Interpolate value of ΔT
     return $this->lagrangeInterp($this->jd, $ds);
-  }
-
-  protected function deltaT_base() {
-    static::iauJd2cal(2400000.5, $this->mjd, $iy, $im, $id, $fd);
-
-    $p = ($iy - 1973) * 12 + $im - 2;
-    if ($p < 0)
-      return false;
-
-    $file = new \SplFileObject($this->storage('deltat.data'));
-    $file->seek($p);
-
-    $maxLine = count(file($file->getRealPath())) - 1;
-
-    if ($p == 0)
-      $p = static::INTERP_COUNT;
-
-    if ($p + static::INTERP_COUNT > $maxLine)
-      $p = $maxLine - static::INTERP_COUNT;
-
-    $ds = [];
-    for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
-      $file->seek($i);
-      $line = $file->getCurrentLine();
-
-      $y = (int)substr($line, 1, 4);
-      $m = (int)substr($line, 6, 2);
-      $d = (int)substr($line, 9, 2);
-      static::iauCal2jd($y, $m, $d, $djm0, $djm);
-
-      $dT = (float)substr($line, 13, 7);
-
-      $ds[$i - $p + static::INTERP_COUNT]['x'] = $djm0 + $djm;
-      $ds[$i - $p + static::INTERP_COUNT]['y'] = $dT;
-    }
-
-    return $dT = $this->lagrangeInterp($this->jd, $ds);
   }
 
   /**
@@ -471,82 +520,12 @@ class IERS {
       $ftpServer = $servers[$i]['domain'];
       $ftp       = ftp_connect($ftpServer);
 
+      // Return resource on connected
       if ($ftp)
         if (ftp_login($ftp, 'anonymous', null))
           if (ftp_chdir($ftp, $servers[$i]['path']))
             if (ftp_pasv($ftp, true))
-              return $ftp;  // Connected, return resource
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+              return $ftp;
     }
 
     // Unable to connect to a server
@@ -665,14 +644,16 @@ class IERS {
   // // // Private
 
   /**
+   * Converts a Julian day count to calendar date.
    *
-   * @param type $dj1
-   * @param type $dj2
-   * @param type $iy
-   * @param type $im
-   * @param type $id
-   * @param type $fd
-   * @return int
+   * @param  float $dj1 JD part 1
+   * @param  float $dj2 JD part 2
+   * @param  float $iy  Year
+   * @param  float $im  Month
+   * @param  float $id  Day
+   * @param  float $fd  Day fraction
+   * @return int        Status code
+   * 
    */
   private static function iauJd2cal($dj1, $dj2, &$iy, &$im, &$id, &$fd) {
     /* Minimum and maximum allowed JD */
@@ -728,6 +709,16 @@ class IERS {
     return 0;
   }
 
+  /**
+   * Converts a calendar date to a Julian day count
+   *
+   * @param  int   $iy   Year
+   * @param  int   $im   Month
+   * @param  int   $id   Day
+   * @param  float $djm0 JD part 1
+   * @param  float $djm  JD part 2
+   * @return int
+   */
   private static function iauCal2jd($iy, $im, $id, &$djm0, &$djm) {
     $j;
     $ly;
