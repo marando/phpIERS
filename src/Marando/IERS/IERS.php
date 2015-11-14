@@ -320,12 +320,14 @@ class IERS {
         break;
 
       // Get JD and leap seconds as of that JD
-      $jd     = (float)substr($line, 17, 9);
-      $taiUTC = (float)substr($line, 38, 10);
+      $jd = (float)substr($line, 17, 9);
 
       // If the leap second JD exeeds or is = to this instance, break
-      if ($jd >= $this->jd)
+      if ($jd > $this->jd)
         break;
+
+      // Within range, use current leap seconds
+      $taiUTC = (float)substr($line, 38, 10);
     }
 
     // Return leap seconds
