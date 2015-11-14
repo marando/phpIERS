@@ -8,6 +8,10 @@
 
 namespace Marando\IERS;
 
+/**
+ * @property float $jd  Julian day count
+ * @property float $mjd Modified Julian day count
+ */
 class IERS {
 
   //----------------------------------------------------------------------------
@@ -57,6 +61,16 @@ class IERS {
 
   protected $jd;
 
+  public function __get($name) {
+    switch ($name) {
+      case 'jd':
+        return $this->{$name};
+
+      case 'mjd':
+        return $this->jd - 2400000.5;
+    }
+  }
+
   //----------------------------------------------------------------------------
   // Functions
   //----------------------------------------------------------------------------
@@ -66,7 +80,7 @@ class IERS {
     $file = new \SplFileObject($this->storage('finals.all'));
 
     // Get instance MJD, and MJD at line 0
-    $mjdQ = $this->jd - 2400000.5;
+    $mjdQ = $this->mjd;
     $mjd0 = (int)substr($file->getCurrentLine(), 7, 8);
 
     // Check for requested MJD before first date
@@ -112,7 +126,7 @@ class IERS {
     $file = new \SplFileObject($this->storage('finals.all'));
 
     // Get instance MJD, and MJD at line 0
-    $mjdQ = $this->jd - 2400000.5;
+    $mjdQ = $this->mjd;
     $mjd0 = (int)substr($file->getCurrentLine(), 7, 8);
 
     // Check for requested MJD before first date
@@ -158,7 +172,7 @@ class IERS {
     $file = new \SplFileObject($this->storage('finals.all'));
 
     // Get instance MJD, and MJD at line 0
-    $mjdQ = $this->jd - 2400000.5;
+    $mjdQ = $this->mjd;
     $mjd0 = (int)substr($file->getCurrentLine(), 7, 8);
 
     // Check for requested MJD before first date

@@ -20,18 +20,18 @@ class GenericTest extends PHPUnit_Framework_TestCase {
   public function test() {
 
 
-
+    return;
 
 
 
     $iers = Marando\IERS\IERS::mjd(51349);
-    echo "\n". $iers->dut1();
-    echo "\n". $iers->x();
-    echo "\n". $iers->y();
+    echo "\n" . $iers->dut1();
+    echo "\n" . $iers->x();
+    echo "\n" . $iers->y();
 
 
 
-return;
+    return;
     exit;
 
     // Make data dir if not exists
