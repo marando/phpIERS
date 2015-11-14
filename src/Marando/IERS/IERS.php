@@ -44,6 +44,12 @@ class IERS {
     return new static(2400000.5 + $mjd);
   }
 
+  public static function now() {
+    $jd = unixtojd(time()) + microtime(true) - time();
+
+    return new static($jd);
+  }
+
   //----------------------------------------------------------------------------
   // Properties
   //----------------------------------------------------------------------------
@@ -62,7 +68,7 @@ class IERS {
     $n = 12;
 
     // Get instance MJD, and MJD at line 0
-    $mjdQ = intval($this->jd) + 0.5 - 2400000.5;
+    $mjdQ = $this->jd - 2400000.5;
     $mjd0 = (int)substr($file->getCurrentLine(), 7, 8);
 
     // Check for requested MJD before first date
@@ -83,8 +89,12 @@ class IERS {
       $line = $file->getCurrentLine();
 
       // Parse data from line
-      $mjd  = substr($line, 7, 8);
-      $dut1 = substr($line, 155, 10);
+      $mjd   = substr($line, 7, 8);
+      $dut1f = substr($line, 156, 9);
+      $dut1p = substr($line, 59, 9);
+
+      // Use final value first, if not present use prediction
+      $dut1 = trim($dut1f) ? $dut1f : $dut1p;
 
       // Check if no dut1 data, error
       if (trim($dut1) == '')
@@ -94,7 +104,7 @@ class IERS {
       $ds[$i - $p + $n]['x'] = (float)$mjd;
       $ds[$i - $p + $n]['y'] = (float)$dut1;
     }
-
+    
     // Interp dut1
     return $this->lagrangeInterp($mjdQ, $ds);
   }
