@@ -292,15 +292,123 @@ class IERS {
    * @return float|boolean Returns false on error
    */
   public function deltaT() {
-    /**
-     *
-     * 1. parse jd of date
-     * 2. find if that date is either
-     *    a. before 1973-2-1  ->  historic
-     *    b. exeeds max len of deltat.data  ->  prediction
-     *    c. else deltat.data
-     *
-     */
+    if ($this->jd < 2441714.5)
+      return $this->deltaT_historic();
+
+    if ($this->jd > $this->lastDeltaTjd())
+      return $this->deltaT_predict();
+
+    return $this->deltaT_base();
+  }
+
+  public function leapSec() {
+
+  }
+
+  // // // Protected
+
+  protected function lastDeltaTjd() {
+    $mLine = count(file($this->storage('deltat.data'))) - 1;
+    $file  = new \SplFileObject($this->storage('deltat.data'));
+    $file->seek($mLine);
+
+    $line = $file->getCurrentLine();
+    while (trim($line) == '') {
+      $file->seek($mLine);
+      $line = $file->getCurrentLine();
+      $mLine--;
+    }
+
+    $y = (int)substr($line, 1, 4);
+    $m = (int)substr($line, 6, 2);
+    $d = (int)substr($line, 9, 2);
+    static::iauCal2jd($y, $m, $d, $djm0, $djm);
+
+    return $djm0 + $djm;
+  }
+
+  protected function deltaT_predict() {
+    static::iauJd2cal(2400000.5, $this->mjd, $y, $m, $d, $fd);
+
+    $file = new \SplFileObject($this->storage('deltat.preds'));
+
+    $p = ($y - 2015) * 4 + 2;
+    if ($p < 0)
+      return false;
+
+    if ($p == 0)
+      $p = static::INTERP_COUNT;
+
+    $maxLine = count(file($file->getRealPath())) - 1;
+    if ($p + static::INTERP_COUNT > $maxLine)
+      $p       = $maxLine - static::INTERP_COUNT;
+
+    $file->seek($p);
+
+    $ds = [];
+    for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+      $file->seek($i);
+      $line = $file->getCurrentLine();
+
+      $y  = (float)substr($line, 1, 7);
+      $ΔT = (float)substr($line, 14, 6);
+
+      $m;
+      if ($y - intval($y) == 0)
+        $m = 1;
+      else if ($y - intval($y) <= 0.25)
+        $m = 3;
+      else if ($y - intval($y) <= 0.5)
+        $m = 6;
+      else if ($y - intval($y) <= 0.75)
+        $m = 9;
+
+      static::iauCal2jd(intval($y), $m, 1, $djm0, $djm);
+
+      $ds[$i - $p + static::INTERP_COUNT]['x'] = $djm0 + $djm;
+      $ds[$i - $p + static::INTERP_COUNT]['y'] = $ΔT;
+    }
+    
+    return $this->lagrangeInterp($this->jd, $ds);
+  }
+
+  protected function deltaT_historic() {
+    static::iauJd2cal(2400000.5, $this->mjd, $y, $m, $d, $fd);
+
+    $file = new \SplFileObject($this->storage('historic_deltat.data'));
+
+    $p = ($y - 1657) * 2 + 2;
+    if ($p < 0)
+      return false;
+
+    if ($p == 0)
+      $p = static::INTERP_COUNT;
+
+    $maxLine = count(file($file->getRealPath())) - 1;
+    if ($p + static::INTERP_COUNT > $maxLine)
+      $p       = $maxLine - static::INTERP_COUNT;
+
+    $file->seek($p);
+
+    $ds = [];
+    for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+      $file->seek($i);
+      $line = $file->getCurrentLine();
+
+      $y  = (float)substr($line, 0, 8);
+      $ΔT = (float)substr($line, 13, 6);
+
+      $m  = intval($y) == $y ? 1 : 6;
+      $jd = static::iauCal2jd((int)$y, $m, 1, $djm0, $djm);
+
+      $ds[$i - $p + static::INTERP_COUNT]['x'] = $djm0 + $djm;
+      $ds[$i - $p + static::INTERP_COUNT]['y'] = $ΔT;
+    }
+
+    return $this->lagrangeInterp($this->jd, $ds);
+  }
+
+  protected function deltaT_base() {
     static::iauJd2cal(2400000.5, $this->mjd, $iy, $im, $id, $fd);
 
     $p = ($iy - 1973) * 12 + $im - 2;
@@ -312,7 +420,7 @@ class IERS {
 
     $maxLine = count(file($file->getRealPath())) - 1;
 
-    if ($p <= 0)
+    if ($p == 0)
       $p = static::INTERP_COUNT;
 
     if ($p + static::INTERP_COUNT > $maxLine)
@@ -336,12 +444,6 @@ class IERS {
 
     return $dT = $this->lagrangeInterp($this->jd, $ds);
   }
-
-  public function leapSec() {
-
-  }
-
-  // // // Protected
 
   /**
    * Returns if all needed remote data files defined in FILES exist locally
@@ -374,6 +476,46 @@ class IERS {
           if (ftp_chdir($ftp, $servers[$i]['path']))
             if (ftp_pasv($ftp, true))
               return $ftp;  // Connected, return resource
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

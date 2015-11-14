@@ -114,7 +114,8 @@ class IERSTest extends \PHPUnit_Framework_TestCase {
         [2441714.5, 43.4724],
         [2041714.5, false],
         [2416846.5, 3.92],
-        [2457754.5, 68.6]
+        [2457754.5, 68.6],
+        [2459366.5, 71.0],
     ];
 
     foreach ($tests as $t) {
