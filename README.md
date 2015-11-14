@@ -33,7 +33,7 @@ Below is a list of values phpIERS can interpolate:
  UT1-UTC (dut1)                | `dut1()`
  TAI-UTC (leap seconds)        | `leapSec()`
  X and Y celestial pole offset | `x()` and `y()`
-
+ 
 #### Delta T (ΔT)
 Delta T can be interpolated for any date from the year 1657 to present, and future dates can be predicted up to ten years into the future. All values returned represent seconds of time
 
