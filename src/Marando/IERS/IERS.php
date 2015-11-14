@@ -27,9 +27,12 @@ namespace Marando\IERS;
  * @property float $mjd Modified Julian day count
  */
 class IERS {
+
   //----------------------------------------------------------------------------
   // Constants
   //----------------------------------------------------------------------------
+
+  const STORAGE_DIR = 'phpIERS';
 
   /**
    * Interpolation dataset count on either side of n value
@@ -524,9 +527,6 @@ class IERS {
    * @return boolean
    */
   protected function filesExist() {
-    if (!file_exists($this->storage('.gitignore')))
-      file_put_contents($this->storage('.gitignore'), '*');
-
     foreach (static::FILES as $file)
       if (!file_exists($this->storage($file)))
         return false;
@@ -625,9 +625,12 @@ class IERS {
    * @return string       Full relative path to the file
    */
   protected function storage($file = null) {
-    $storagePath = 'data';
+    $storagePath = static::STORAGE_DIR;
     if (!file_exists($storagePath))
       mkdir($storagePath);
+
+    if (!file_exists("$storagePath/.gitignore"))
+      file_put_contents("$storagePath/.gitignore", '*');
 
     return $file ? "$storagePath/$file" : "$storagePath";
   }
@@ -647,7 +650,7 @@ class IERS {
         return false;
 
     // Log FTP diff procedure
-    $this->log('DIFF');
+    $this->log('Checking for update...');
     $ftp = $this->ftp();
     foreach (static::FILES as $file) {
       // Local file path
@@ -661,7 +664,7 @@ class IERS {
       if ($lSize != $rSize) {
         // Download files if the sizes differ
         ftp_get($ftp, $lFile, $file, FTP_ASCII);
-        $this->log($file);
+        $this->log("Updated > $file");
       }
     }
 
