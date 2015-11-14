@@ -38,16 +38,27 @@ Below is a list of values phpIERS can interpolate:
 Delta T can be interpolated for any date from the year 1657 to the present, and future dates can be predicted up to ten years into the future:
 
 ```php
-IERS::jd(2451545.5)->deltaT();  // Result 63.829474585665 sec.
-IERS::jd(2351545.5)->deltaT();  // Result 19.251735262674 sec.
+IERS::jd(2451545.5)->deltaT();  // Result: 63.829474585665
+IERS::jd(2351545.5)->deltaT();  // Result: 19.251735262674
 ```
 
-####
+#### UT1-UTC (dut1)
+```php
+IERS::jd(2451545.5)->dut1();  // Result: 0.354633
+IERS::jd(2457545.5)->dut1();  // Result: 0.1725287
+```
 
+#### TAI-UTC (Leap Seconds)
+```php
+IERS::jd(2451545.5)->leapSec();  // Result: 33
+IERS::jd(2457545.5)->leapSec();  // Result: 36
+```
 
-
-
-
+#### Celestial Pole Offset (X and Y)
+```php
+IERS::jd(2457545.5)->x();  // Result: 0.086606
+IERS::jd(2457545.5)->y();  // Result: 0.012592
+```
 
 
 
