@@ -275,6 +275,47 @@ class IERS {
     return $this->lagrangeInterp($mjdQ, $ds);
   }
 
+  public function deltaT() {
+    static::iauJd2cal(2400000.5, $this->mjd, $iy, $im, $id, $fd);
+
+    $p = ($iy - 1973) * 12 + $im - 2;
+    if ($p < 0)
+      return false;
+
+    $file = new \SplFileObject($this->storage('deltat.data'));
+    $file->seek($p);
+
+    $maxLine = count(file($file->getRealPath())) - 1;
+
+    if ($p <= 0)
+      $p = static::INTERP_COUNT;
+
+    if ($p + static::INTERP_COUNT > $maxLine)
+      $p = $maxLine - static::INTERP_COUNT;
+
+    $ds = [];
+    for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+      $file->seek($i);
+      $line = $file->getCurrentLine();
+
+      $y = (int)substr($line, 1, 4);
+      $m = (int)substr($line, 6, 2);
+      $d = (int)substr($line, 9, 2);
+      static::iauCal2jd($y, $m, $d, $djm0, $djm);
+
+      $dT = (float)substr($line, 13, 7);
+
+      $ds[$i - $p + static::INTERP_COUNT]['x'] = $djm0 + $djm;
+      $ds[$i - $p + static::INTERP_COUNT]['y'] = $dT;
+    }
+
+    return $dT = $this->lagrangeInterp($this->jd, $ds);
+  }
+
+  public function leapSec() {
+
+  }
+
   // // // Protected
 
   /**
@@ -308,6 +349,31 @@ class IERS {
           if (ftp_chdir($ftp, $servers[$i]['path']))
             if (ftp_pasv($ftp, true))
               return $ftp;  // Connected, return resource
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -426,6 +492,105 @@ class IERS {
 
     // Flag current last update time to now
     $this->setUpdatedNow();
+  }
+
+  // // // Private
+
+  /**
+   *
+   * @param type $dj1
+   * @param type $dj2
+   * @param type $iy
+   * @param type $im
+   * @param type $id
+   * @param type $fd
+   * @return int
+   */
+  private static function iauJd2cal($dj1, $dj2, &$iy, &$im, &$id, &$fd) {
+    /* Minimum and maximum allowed JD */
+    $DJMIN = -68569.5;
+    $DJMAX = 1e9;
+    $jd;
+    $l;
+    $n;
+    $i;
+    $k;
+    $dj;
+    $d1;
+    $d2;
+    $f1;
+    $f2;
+    $f;
+    $d;
+    /* Verify date is acceptable. */
+    $dj    = $dj1 + $dj2;
+    if ($dj < $DJMIN || $dj > $DJMAX)
+      return -1;
+    /* Copy the date, big then small, and re-align to midnight. */
+    if ($dj1 >= $dj2) {
+      $d1 = $dj1;
+      $d2 = $dj2;
+    }
+    else {
+      $d1 = $dj2;
+      $d2 = $dj1;
+    }
+    $d2 -= 0.5;
+    /* Separate day and fraction. */
+    $f1 = fmod($d1, 1.0);
+    $f2 = fmod($d2, 1.0);
+    $f  = fmod($f1 + $f2, 1.0);
+    if ($f < 0.0)
+      $f += 1.0;
+    $d  = floor($d1 - $f1) + floor($d2 - $f2) + floor($f1 + $f2 - $f);
+    $jd = floor($d) + 1;
+    /* Express day in Gregorian calendar. */
+    // Integer division parts of this block was modified in the PHP translation
+    $l  = $jd + 68569;
+    $n  = intval((4 * $l) / 146097);
+    $l -= intval((146097 * $n + 3) / 4);
+    $i  = intval((4000 * ($l + 1)) / 1461001);
+    $l -= ((1461 * $i) / 4) - 31;
+    $k  = intval((80 * $l) / 2447);
+    $id = round($l - (2447 * $k) / 80);
+    $l  = intval($k / 11);
+    $im = (int)($k + 2 - 12 * $l);
+    $iy = (int)(100 * ($n - 49) + $i + $l);
+    $fd = $f;
+    return 0;
+  }
+
+  private static function iauCal2jd($iy, $im, $id, &$djm0, &$djm) {
+    $j;
+    $ly;
+    $my;
+    $iypmy;
+    /* Earliest year allowed (4800BC) */
+    $IYMIN = -4799;
+    /* Month lengths in days */
+    $mtab  = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    /* Preset status. */
+    $j     = 0;
+    /* Validate year and month. */
+    if ($iy < $IYMIN)
+      return -1;
+    if ($im < 1 || $im > 12)
+      return -2;
+    /* If February in a leap year, 1, otherwise 0. */
+    $ly    = (($im == 2) && !($iy % 4) && ($iy % 100 || !($iy % 400)));
+    /* Validate day, taking into account leap years. */
+    if (($id < 1) || ($id > ($mtab[$im - 1] + $ly)))
+      $j     = -3;
+    /* Return result. */
+    $my    = intval(($im - 14) / 12);
+    $iypmy = intval($iy + $my);
+    $djm0  = 2400000.5;
+    $djm   = (double)( intval((1461 * ($iypmy + 4800)) / 4) +
+            intval((367 * intval($im - 2 - 12 * $my)) / 12) -
+            intval((3 * ( intval(($iypmy + 4900) / 100) )) / 4) +
+            intval($id - 2432076));
+    /* Return status. */
+    return $j;
   }
 
 }

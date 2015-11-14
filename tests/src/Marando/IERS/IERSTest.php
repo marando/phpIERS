@@ -86,4 +86,26 @@ class IERSTest extends \PHPUnit_Framework_TestCase {
     }
   }
 
+  /**
+   * @covers Marando\IERS\IERS::deltaT
+   */
+  public function testDeltaT() {
+    $tests = [
+        [2456566.5, 67.1717],
+        [2449384.5, 60.0564],
+        [2441714.5, 43.4724],
+        [2041714.5, false],
+        [2416846.5, 3.92],
+        [2457754.5, 68.6]
+    ];
+
+    foreach ($tests as $t) {
+      $mjd = $t[0];
+      $ΔT  = $t[1];
+
+      $iers = IERS::jd($mjd);
+      $this->assertEquals($ΔT, $iers->deltaT(), $mjd);
+    }
+  }
+
 }
