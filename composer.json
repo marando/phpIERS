@@ -1,5 +1,6 @@
 {
   "name": "marando/php-iers",
+  "description": "A PHP package that simplifies obtaining Earth rotation values from IERS bulletins.",
   "require": {
     "php": "^5.6"
   },
