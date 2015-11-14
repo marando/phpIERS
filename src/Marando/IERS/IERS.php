@@ -14,6 +14,7 @@ class IERS {
   // Constants
   //----------------------------------------------------------------------------
 
+  const INTERP_COUNT   = 12;
   const UPDATE_INTVL_H = 12;
   const FILES          = [
       'deltat.data',
@@ -64,9 +65,6 @@ class IERS {
     // Load file
     $file = new \SplFileObject($this->storage('finals.all'));
 
-    // Dataset count = n*2-1 vales
-    $n = 12;
-
     // Get instance MJD, and MJD at line 0
     $mjdQ = $this->jd - 2400000.5;
     $mjd0 = (int)substr($file->getCurrentLine(), 7, 8);
@@ -79,12 +77,12 @@ class IERS {
     $p = $mjdQ - $mjd0 - 1;
 
     // Fix for values within |n| of lower bound
-    if ($p < $n && $p > -$n)
-      $p = $n;
+    if ($p < static::INTERP_COUNT && $p > -static::INTERP_COUNT)
+      $p = static::INTERP_COUNT;
 
     // Compile dataset
     $ds = [];
-    for ($i = $p - $n; $i < $p + $n; $i++) {
+    for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
       $file->seek($i);
       $line = $file->getCurrentLine();
 
@@ -101,11 +99,103 @@ class IERS {
         return false;
 
       // Add the data
-      $ds[$i - $p + $n]['x'] = (float)$mjd;
-      $ds[$i - $p + $n]['y'] = (float)$dut1;
+      $ds[$i - $p + static::INTERP_COUNT]['x'] = (float)$mjd;
+      $ds[$i - $p + static::INTERP_COUNT]['y'] = (float)$dut1;
     }
-    
+
     // Interp dut1
+    return $this->lagrangeInterp($mjdQ, $ds);
+  }
+
+  public function x() {
+    // Load file
+    $file = new \SplFileObject($this->storage('finals.all'));
+
+    // Get instance MJD, and MJD at line 0
+    $mjdQ = $this->jd - 2400000.5;
+    $mjd0 = (int)substr($file->getCurrentLine(), 7, 8);
+
+    // Check for requested MJD before first date
+    if ($mjdQ < $mjd0)
+      return false;
+
+    // Determine nearest center pointer
+    $p = $mjdQ - $mjd0 - 1;
+
+    // Fix for values within |n| of lower bound
+    if ($p < static::INTERP_COUNT && $p > -static::INTERP_COUNT)
+      $p = static::INTERP_COUNT;
+
+    // Compile dataset
+    $ds = [];
+    for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+      $file->seek($i);
+      $line = $file->getCurrentLine();
+
+      // Parse data from line
+      $mjd = substr($line, 7, 8);
+      $xf  = substr($line, 136, 9);
+      $xp  = substr($line, 18, 9);
+
+      // Use final value first, if not present use prediction
+      $x = trim($xf) ? $xf : $xp;
+
+      // Check if no dut1 data, error
+      if (trim($x) == '')
+        return false;
+
+      // Add the data
+      $ds[$i - $p + static::INTERP_COUNT]['x'] = (float)$mjd;
+      $ds[$i - $p + static::INTERP_COUNT]['y'] = (float)$x;
+    }
+
+    // Interp pole x
+    return $this->lagrangeInterp($mjdQ, $ds);
+  }
+
+  public function y() {
+    // Load file
+    $file = new \SplFileObject($this->storage('finals.all'));
+
+    // Get instance MJD, and MJD at line 0
+    $mjdQ = $this->jd - 2400000.5;
+    $mjd0 = (int)substr($file->getCurrentLine(), 7, 8);
+
+    // Check for requested MJD before first date
+    if ($mjdQ < $mjd0)
+      return false;
+
+    // Determine nearest center pointer
+    $p = $mjdQ - $mjd0 - 1;
+
+    // Fix for values within |n| of lower bound
+    if ($p < static::INTERP_COUNT && $p > -static::INTERP_COUNT)
+      $p = static::INTERP_COUNT;
+
+    // Compile dataset
+    $ds = [];
+    for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+      $file->seek($i);
+      $line = $file->getCurrentLine();
+
+      // Parse data from line
+      $mjd = substr($line, 7, 8);
+      $yf  = substr($line, 146, 9);
+      $yp  = substr($line, 27, 9);
+
+      // Use final value first, if not present use prediction
+      $y = trim($yf) ? $yf : $yp;
+
+      // Check if no dut1 data, error
+      if (trim($y) == '')
+        return false;
+
+      // Add the data
+      $ds[$i - $p + static::INTERP_COUNT]['x'] = (float)$mjd;
+      $ds[$i - $p + static::INTERP_COUNT]['y'] = (float)$y;
+    }
+
+    // Interp pole y
     return $this->lagrangeInterp($mjdQ, $ds);
   }
 

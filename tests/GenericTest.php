@@ -23,8 +23,11 @@ class GenericTest extends PHPUnit_Framework_TestCase {
 
 
 
-    $iers = Marando\IERS\IERS::now();
-    echo $iers->dut1();
+
+    $iers = Marando\IERS\IERS::mjd(51349);
+    echo "\n". $iers->dut1();
+    echo "\n". $iers->x();
+    echo "\n". $iers->y();
 
 
 
