@@ -1,6 +1,6 @@
 phpIERS
 =======
-phpIERS is a PHP package that simplifies obtaining values Earth's rotation values published by the International Earth Rotation and Reference Systems Service. 
+phpIERS is a PHP package that simplifies obtaining values of Earth's rotation published by the International Earth Rotation and Reference Systems Service. 
 
 The package can obtain values the following items:
 
