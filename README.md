@@ -50,7 +50,7 @@ IERS::jd(2457545.5)->dut1();  // Result: 0.1725287
 ```
 
 #### TAI-UTC (Leap Seconds)
-The total number of leap seconds accrued to the specified date can be obtained as shown:
+The total number of leap seconds accrued as of the specified date can be obtained as shown:
 ```php
 IERS::jd(2451545.5)->leapSec();  // Result: 33
 IERS::jd(2457545.5)->leapSec();  // Result: 36
