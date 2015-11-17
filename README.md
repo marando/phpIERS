@@ -2,16 +2,6 @@ phpIERS
 =======
 phpIERS is a PHP package that simplifies obtaining Earth rotation values published by the International Earth Rotation and Reference Systems Service. 
 
-The package can obtain values the following items:
-
-   Value                         | Method
-  -------------------------------|----------------
-   DeltaT (ΔT)                   | `deltaT()`
-   UT1-UTC (dut1)                | `dut1()`
-   TAI-UTC (leap seconds)        | `leapSec()`
-   X and Y celestial pole offset | `x()` and `y()`
- 
-Intermediate values are interpolated using the Lagrange interpolation algorithm.
 
 Installation
 ------------
