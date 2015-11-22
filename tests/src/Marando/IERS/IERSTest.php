@@ -146,6 +146,11 @@ class IERSTest extends \PHPUnit_Framework_TestCase {
     }
   }
 
+  public function testIERSFile() {
+    $taiUTC = IERSFile::taiUTC();
+    $this->assertTrue(file_exists($taiUTC));
+  }
+
   public function benchmark() {
     $iterations = 10;
 
