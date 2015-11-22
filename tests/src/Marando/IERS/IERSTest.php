@@ -58,7 +58,7 @@ class IERSTest extends \PHPUnit_Framework_TestCase {
       $dut1 = $t[1];
 
       $iers = IERS::mjd($mjd);
-      $this->assertEquals($dut1, $iers->dut1());
+      $this->assertEquals($dut1, $iers->dut1(), $t[0], 1e-3);
     }
   }
 
@@ -79,7 +79,7 @@ class IERSTest extends \PHPUnit_Framework_TestCase {
       $dut1 = $t[1];
 
       $iers = IERS::mjd($mjd);
-      $this->assertEquals($dut1, $iers->x());
+      $this->assertEquals($dut1, $iers->x(), $t[0], 1e-2);
     }
   }
 
@@ -100,7 +100,7 @@ class IERSTest extends \PHPUnit_Framework_TestCase {
       $dut1 = $t[1];
 
       $iers = IERS::mjd($mjd);
-      $this->assertEquals($dut1, $iers->y());
+      $this->assertEquals($dut1, $iers->y(), $t[0], 1e-3);
     }
   }
 
