@@ -32,7 +32,7 @@ class IERS {
   // Constants
   //----------------------------------------------------------------------------
 
-  const STORAGE_DIR = 'phpIERS';
+  const STORAGE_DIR = 'iers-data';
 
   /**
    * Interpolation dataset count on either side of n value
@@ -627,14 +627,16 @@ class IERS {
    * @return string       Full relative path to the file
    */
   protected function storage($file = null) {
-    $storagePath = static::STORAGE_DIR;
-    if (!file_exists($storagePath))
-      mkdir($storagePath);
+    $folder = static::STORAGE_DIR;
+    $path   = __DIR__ . "/../../../$folder";
 
-    if (!file_exists("$storagePath/.gitignore"))
-      file_put_contents("$storagePath/.gitignore", '*');
+    if (!file_exists($path))
+      mkdir($path);
 
-    return $file ? "$storagePath/$file" : "$storagePath";
+    if (!file_exists("$path/.gitignore"))
+      file_put_contents("$path/.gitignore", '*');
+
+    return $file ? "$path/$file" : "$path";
   }
 
   /**
@@ -671,6 +673,7 @@ class IERS {
     }
 
     // Flag current last update time to now
+    $this->log('Update complete');
     $this->setUpdatedNow();
   }
 
