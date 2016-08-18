@@ -20,11 +20,6 @@
 
 namespace Marando\IERS;
 
-use Monolog\Handler\FirePHPHandler;
-use Monolog\Handler\StreamHandler;
-use Monolog\Logger;
-use SebastianBergmann\CodeCoverage\Report\PHP;
-
 /**
  * Provides IERS bulletin data.
  *
@@ -45,7 +40,7 @@ class IERS
     /**
      * How many rows of data to use when interpolating results.
      */
-    const INTERP_COUNT = 5;
+    const INTERP_C = 5;
 
     /**
      * Minimum hourly interval IERS servers may be queried for new data.
@@ -135,7 +130,7 @@ class IERS
      *
      * @var float
      */
-    protected $jd;
+    private $jd;
 
     public function __get($name)
     {
@@ -153,9 +148,9 @@ class IERS
     //----------------------------------------------------------------------------
 
     /**
-     * Interpolates the value of UT1-UTC (dut1) in seconds
+     * Interpolates the value of UT1-UTC (dut1) in seconds.
      *
-     * @return float|boolean Returns false on error
+     * @return float|boolean Returns false on error.
      */
     public function dut1()
     {
@@ -175,13 +170,13 @@ class IERS
         $p = $mjdQ - $mjd0 - 1;
 
         // Fix for values within |n| of lower bound
-        if ($p < static::INTERP_COUNT && $p > -static::INTERP_COUNT) {
-            $p = static::INTERP_COUNT;
+        if ($p < static::INTERP_C && $p > -static::INTERP_C) {
+            $p = static::INTERP_C;
         }
 
         // Compile dataset
         $ds = [];
-        for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+        for ($i = $p - static::INTERP_C; $i < $p + static::INTERP_C; $i++) {
             $file->seek($i);
             $line = $file->getCurrentLine();
 
@@ -199,18 +194,18 @@ class IERS
             }
 
             // Add the data
-            $ds[$i - $p + static::INTERP_COUNT]['x'] = (float)$mjd;
-            $ds[$i - $p + static::INTERP_COUNT]['y'] = (float)$dut1;
+            $ds[$i - $p + static::INTERP_C]['x'] = (float)$mjd;
+            $ds[$i - $p + static::INTERP_C]['y'] = (float)$dut1;
         }
 
-        // Interp dut1
+        // Interpolate dut1
         return $this->lagrangeInterp($mjdQ, $ds);
     }
 
     /**
-     * Interpolates the celestial pole offset value of x in seconds of arc
+     * Interpolates the celestial pole offset value of x in seconds of arc.
      *
-     * @return float|boolean Returns false on error
+     * @return float|boolean Returns false on error.
      */
     public function x()
     {
@@ -230,13 +225,13 @@ class IERS
         $p = $mjdQ - $mjd0 - 1;
 
         // Fix for values within |n| of lower bound
-        if ($p < static::INTERP_COUNT && $p > -static::INTERP_COUNT) {
-            $p = static::INTERP_COUNT;
+        if ($p < static::INTERP_C && $p > -static::INTERP_C) {
+            $p = static::INTERP_C;
         }
 
         // Compile dataset
         $ds = [];
-        for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+        for ($i = $p - static::INTERP_C; $i < $p + static::INTERP_C; $i++) {
             $file->seek($i);
             $line = $file->getCurrentLine();
 
@@ -254,18 +249,18 @@ class IERS
             }
 
             // Add the data
-            $ds[$i - $p + static::INTERP_COUNT]['x'] = (float)$mjd;
-            $ds[$i - $p + static::INTERP_COUNT]['y'] = (float)$x;
+            $ds[$i - $p + static::INTERP_C]['x'] = (float)$mjd;
+            $ds[$i - $p + static::INTERP_C]['y'] = (float)$x;
         }
 
-        // Interp pole x
+        // Interpolate pole x
         return $this->lagrangeInterp($mjdQ, $ds);
     }
 
     /**
-     * Interpolates the celestial pole offset value of y in seconds of arc
+     * Interpolates the celestial pole offset value of y in seconds of arc.
      *
-     * @return float|boolean Returns false on error
+     * @return float|boolean Returns false on error.
      */
     public function y()
     {
@@ -285,13 +280,13 @@ class IERS
         $p = $mjdQ - $mjd0 - 1;
 
         // Fix for values within |n| of lower bound
-        if ($p < static::INTERP_COUNT && $p > -static::INTERP_COUNT) {
-            $p = static::INTERP_COUNT;
+        if ($p < static::INTERP_C && $p > -static::INTERP_C) {
+            $p = static::INTERP_C;
         }
 
         // Compile dataset
         $ds = [];
-        for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+        for ($i = $p - static::INTERP_C; $i < $p + static::INTERP_C; $i++) {
             $file->seek($i);
             $line = $file->getCurrentLine();
 
@@ -309,18 +304,18 @@ class IERS
             }
 
             // Add the data
-            $ds[$i - $p + static::INTERP_COUNT]['x'] = (float)$mjd;
-            $ds[$i - $p + static::INTERP_COUNT]['y'] = (float)$y;
+            $ds[$i - $p + static::INTERP_C]['x'] = (float)$mjd;
+            $ds[$i - $p + static::INTERP_C]['y'] = (float)$y;
         }
 
-        // Interp pole y
+        // Interpolate pole y
         return $this->lagrangeInterp($mjdQ, $ds);
     }
 
     /**
      * Interpolates the value of delta T (ΔΤ)
      *
-     * @return float|boolean Returns false on error
+     * @return float|boolean Returns false on error.
      */
     public function deltaT()
     {
@@ -338,12 +333,17 @@ class IERS
         return $this->deltaT_base();
     }
 
+    /**
+     * Finds the number of leap seconds as of the instance's date.
+     *
+     * @return float
+     */
     public function leapSec()
     {
         // Load data file
         $file = new \SplFileObject($this->storage('tai-utc.dat'));
 
-        $taiUTC;
+        $taiUTC = 0;
         while ($file->valid()) {
             $line = $file->getCurrentLine();
 
@@ -355,7 +355,7 @@ class IERS
             // Get JD and leap seconds as of that JD
             $jd = (float)substr($line, 17, 9);
 
-            // If the leap second JD exeeds or is = to this instance, break
+            // If the leap second JD exceeds or is = to this instance, break
             if ($jd > $this->jd) {
                 break;
             }
@@ -368,20 +368,23 @@ class IERS
         return $taiUTC;
     }
 
+    /**
+     * Performs an update of the local IERS data.
+     */
     public static function update()
     {
         $iers = IERS::now();
         $iers->performUpdate();
     }
 
-    // // // Protected
+    // // // Private
 
     /**
      * Finds the final Julian day count in the deltat.data file
      *
      * @return float
      */
-    protected function deltaT_lastJD()
+    private function deltaT_lastJD()
     {
         // Seek to maximum line
         $mLine = count(file($this->storage('deltat.data'))) - 1;
@@ -414,7 +417,7 @@ class IERS
      *
      * @return float|boolean Returns false if an error has occured
      */
-    protected function deltaT_historic()
+    private function deltaT_historic()
     {
         // Get calendar date
         static::iauJd2cal(2400000.5, $this->mjd, $y, $m, $d, $fd);
@@ -430,18 +433,18 @@ class IERS
         }
 
         // Reset pointer if within INTERP_COUNT range on lower bound
-        if ($p < static::INTERP_COUNT) {
-            $p = static::INTERP_COUNT;
+        if ($p < static::INTERP_C) {
+            $p = static::INTERP_C;
         }
 
         // Reset pointer if within INTERP_COUNTn range on upper bound
-        if ($p + static::INTERP_COUNT > $mLine) {
-            $p = $mLine - static::INTERP_COUNT;
+        if ($p + static::INTERP_C > $mLine) {
+            $p = $mLine - static::INTERP_C;
         }
 
         // Compile dataset
         $ds = [];
-        for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+        for ($i = $p - static::INTERP_C; $i < $p + static::INTERP_C; $i++) {
             // Seek pointer and get line
             $file->seek($i);
             $line = $file->getCurrentLine();
@@ -455,8 +458,8 @@ class IERS
             $jd = static::iauCal2jd((int)$y, $m, 1, $djm0, $djm);
 
             // Insert data
-            $ds[$i - $p + static::INTERP_COUNT]['x'] = $djm0 + $djm;
-            $ds[$i - $p + static::INTERP_COUNT]['y'] = $ΔT;
+            $ds[$i - $p + static::INTERP_C]['x'] = $djm0 + $djm;
+            $ds[$i - $p + static::INTERP_C]['y'] = $ΔT;
         }
 
         // Interpolate value of ΔT
@@ -468,7 +471,7 @@ class IERS
      *
      * @return float|boolean Returns false if an error has occured
      */
-    protected function deltaT_base()
+    private function deltaT_base()
     {
         // Get Julian day count
         static::iauJd2cal(2400000.5, $this->mjd, $iy, $im, $id, $fd);
@@ -484,18 +487,18 @@ class IERS
         $mLine = count(file($file->getRealPath())) - 1;
 
         // Reset pointer if within INTERP_COUNT on lower bound
-        if ($p < static::INTERP_COUNT) {
-            $p = static::INTERP_COUNT;
+        if ($p < static::INTERP_C) {
+            $p = static::INTERP_C;
         }
 
         // Reset pointer if within INTERP_COUNT on upper bound
-        if ($p + static::INTERP_COUNT > $mLine) {
-            $p = $mLine - static::INTERP_COUNT;
+        if ($p + static::INTERP_C > $mLine) {
+            $p = $mLine - static::INTERP_C;
         }
 
         // Compile dataset
         $ds = [];
-        for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+        for ($i = $p - static::INTERP_C; $i < $p + static::INTERP_C; $i++) {
             // Seek pointer and get line
             $file->seek($i);
             $line = $file->getCurrentLine();
@@ -510,8 +513,8 @@ class IERS
             $dT = (float)substr($line, 13, 7);
 
             // Insert data
-            $ds[$i - $p + static::INTERP_COUNT]['x'] = $djm0 + $djm;
-            $ds[$i - $p + static::INTERP_COUNT]['y'] = $dT;
+            $ds[$i - $p + static::INTERP_C]['x'] = $djm0 + $djm;
+            $ds[$i - $p + static::INTERP_C]['y'] = $dT;
         }
 
         // Interpolate value of ΔT
@@ -523,7 +526,7 @@ class IERS
      *
      * @return float|boolean Returns false if an error has occured
      */
-    protected function deltaT_predict()
+    private function deltaT_predict()
     {
         // Get Julian day count
         static::iauJd2cal(2400000.5, $this->mjd, $y, $m, $d, $fd);
@@ -542,18 +545,18 @@ class IERS
         }
 
         // Reset pointer if within INTERP_COUNT on lower bound
-        if ($p <= static::INTERP_COUNT) {
-            $p = static::INTERP_COUNT + 3;
+        if ($p <= static::INTERP_C) {
+            $p = static::INTERP_C + 3;
         }
 
         // Reset pointer if within INTERP_COUNT on upper bound
-        if ($p + static::INTERP_COUNT > $maxLine) {
-            $p = $maxLine - static::INTERP_COUNT;
+        if ($p + static::INTERP_C > $maxLine) {
+            $p = $maxLine - static::INTERP_C;
         }
 
         // Compile dataset
         $ds = [];
-        for ($i = $p - static::INTERP_COUNT; $i < $p + static::INTERP_COUNT; $i++) {
+        for ($i = $p - static::INTERP_C; $i < $p + static::INTERP_C; $i++) {
             // Seek pointer and get line
             $file->seek($i);
             $line = $file->getCurrentLine();
@@ -566,26 +569,20 @@ class IERS
             $m;
             if ($y - intval($y) == 0) {
                 $m = 1;
-            } else {
-                if ($y - intval($y) <= 0.25) {
-                    $m = 3;
-                } else {
-                    if ($y - intval($y) <= 0.5) {
-                        $m = 6;
-                    } else {
-                        if ($y - intval($y) <= 0.75) {
-                            $m = 9;
-                        }
-                    }
-                }
+            } elseif ($y - intval($y) <= 0.25) {
+                $m = 3;
+            } elseif ($y - intval($y) <= 0.5) {
+                $m = 6;
+            } elseif ($y - intval($y) <= 0.75) {
+                $m = 9;
             }
 
             // YMD -> JD
             static::iauCal2jd(intval($y), $m, 1, $djm0, $djm);
 
             // Insert data
-            $ds[$i - $p + static::INTERP_COUNT]['x'] = $djm0 + $djm;
-            $ds[$i - $p + static::INTERP_COUNT]['y'] = $ΔT;
+            $ds[$i - $p + static::INTERP_C]['x'] = $djm0 + $djm;
+            $ds[$i - $p + static::INTERP_C]['y'] = $ΔT;
         }
 
         // Interpolate value of ΔT
@@ -597,7 +594,7 @@ class IERS
      *
      * @return boolean
      */
-    protected function filesExist()
+    private function filesExist()
     {
         foreach (static::FILES as $file) {
             if (!file_exists($this->storage($file))) {
@@ -612,10 +609,10 @@ class IERS
      * Connects to the first available IERS server mirror and returns an FTP
      * connection resource
      *
-     * @return resource  FTP resource
-     * @throws Exception Occurs if no connection can be made
+     * @return resource FTP resource
+     * @throws \Exception
      */
-    protected function ftp()
+    private function ftp()
     {
         $servers = static::SERVERS;  // Server list
         // Try each server till success
@@ -645,7 +642,7 @@ class IERS
      *
      * @return float
      */
-    protected function hoursSinceUpdate()
+    private function hoursSinceUpdate()
     {
         $file = $this->storage('.updated');  // Last updated file
         // Return 0 if no file
@@ -666,7 +663,7 @@ class IERS
      *
      * @return float        interpolated value of y
      */
-    protected function lagrangeInterp($x, $table)
+    private function lagrangeInterp($x, $table)
     {
         $sum = 0;
         for ($i = 0; $i < count($table); $i++) {
@@ -691,7 +688,7 @@ class IERS
      *
      * @param string $data
      */
-    protected function log($data)
+    private function log($data)
     {
         $data = date(DATE_RSS, time()) . "\t$data\n";
         file_put_contents($this->storage('.log'), $data, FILE_APPEND);
@@ -701,20 +698,20 @@ class IERS
      * Saves to disk the last remote file update timestamp using the current
      * time
      */
-    protected function setUpdatedNow()
+    private function setUpdatedNow()
     {
         file_put_contents($this->storage('.updated'), time());
     }
 
     /**
-     * Returns a file from local storage, and creates the directory in the event
-     * that it does not exist
+     * Returns a file from local storage, and creates the directory and
+     * initializes default IERS data in the event that it does not exist.
      *
      * @param  string $file Filename
      *
      * @return string       Full relative path to the file
      */
-    protected function storage($file = null)
+    private function storage($file = null)
     {
         $folder = static::STORAGE_DIR;
         $path   = __DIR__ . "/../../../$folder";
@@ -739,7 +736,7 @@ class IERS
      *
      * @return bool
      */
-    protected function performUpdate()
+    private function performUpdate()
     {
         // Check if everything is ok locally
         if ($this->filesExist()) {
@@ -771,8 +768,6 @@ class IERS
         $this->log('Update complete');
         $this->setUpdatedNow();
     }
-
-    // // // Private
 
     /**
      * Converts a Julian day count to calendar date.

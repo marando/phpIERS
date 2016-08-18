@@ -15,6 +15,12 @@ $ composer require marando/php-iers
 Usage
 -----
 
+#### About Data
+When you install the package, a default set of IERS data will be installed from
+the time that the package was released. If you wish to have the most up to date
+data then you should call the IERS::update() function which will download the
+most recent data. You can put this in a cron job to keep things up to date.
+
 #### Creating an Instance
 You can create an instance from a standard of modified Julian day, as well as the current time:
 ```php
