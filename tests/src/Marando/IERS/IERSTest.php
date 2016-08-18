@@ -147,54 +147,5 @@ class IERSTest extends \PHPUnit_Framework_TestCase
             $this->assertEquals($lSec, IERS::jd($jd)->leapSec(), $jd);
         }
     }
-
-    public function testIERSFile()
-    {
-        $taiUTC = IERSFile::taiUTC();
-        $this->assertTrue(file_exists($taiUTC));
-    }
-
-    public function benchmark()
-    {
-        $iterations = 10;
-
-        for ($j = 0; $j < 5; $j++) {
-            // Method A
-            $t = microtime(true);
-            for ($i = 0; $i < $iterations; $i++) {
-                IERS::jd(2451545.5 + $i)->deltaT();
-                IERS::jd(2451545.5 + $i)->dut1();
-                IERS::jd(2451545.5 + $i)->leapSec();
-                IERS::jd(2451545.5 + $i)->x();
-                IERS::jd(2451545.5 + $i)->y();
-            }
-            echo "\n\nA  -> " . round(microtime(true) - $t, 3) . ' seconds';
-
-            // Method B
-            $t = microtime(true);
-            for ($i = 0; $i < $iterations; $i++) {
-                $iers = IERS::jd(2451545.5 + $i);
-                $iers->deltaT();
-                $iers->dut1();
-                $iers->leapSec();
-                $iers->x();
-                $iers->y();
-            }
-            echo "\nB  -> " . round(microtime(true) - $t, 3) . ' seconds';
-
-            // Bethod B-1
-            $t = microtime(true);
-            for ($i = 0; $i < $iterations; $i++) {
-                $iers = IERS::jd(2451545.5 + $i);
-                $iers->deltaT();
-                $iers->dut1();
-                $iers->leapSec();
-                $iers->x();
-                $iers->y();
-                $iers = null;
-            }
-            echo "\nB1 -> " . round(microtime(true) - $t, 3) . ' seconds';
-        }
-    }
-
+    
 }
