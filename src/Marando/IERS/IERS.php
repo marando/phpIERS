@@ -740,7 +740,7 @@ class IERS
     {
         // Check if everything is ok locally
         if ($this->filesExist()) {
-            if ($this->hoursSinceUpdate() <= static::UPDATE_INTVL_H) {
+            if ($this->hoursSinceUpdate() < static::UPDATE_INTVL_H) {
                 return false;
             }
         }
