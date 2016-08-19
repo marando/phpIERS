@@ -174,6 +174,11 @@ class IERS
             $p = static::INTERP_C;
         }
 
+        $mLine = count(file($file->getRealPath())) - 1;
+        if ($p > $mLine) {
+            throw new \Exception("No dut data for JD={$this->jd}.");
+        }
+
         // Compile dataset
         $ds = [];
         for ($i = $p - static::INTERP_C; $i < $p + static::INTERP_C; $i++) {
@@ -370,11 +375,15 @@ class IERS
 
     /**
      * Performs an update of the local IERS data.
+     *
+     * @return array|bool An array of files that were updated.
      */
     public static function update()
     {
-        $iers = IERS::now();
-        $iers->performUpdate();
+        $iers         = IERS::now();
+        $filesUpdated = $iers->performUpdate();
+
+        return $filesUpdated;
     }
 
     // // // Private
@@ -524,7 +533,8 @@ class IERS
     /**
      * Interpolates the value of ΔΤ for a future date
      *
-     * @return float|boolean Returns false if an error has occured
+     * @return bool|float Returns false if an error has occured
+     * @throws \Exception
      */
     private function deltaT_predict()
     {
@@ -547,6 +557,10 @@ class IERS
         // Reset pointer if within INTERP_COUNT on lower bound
         if ($p <= static::INTERP_C) {
             $p = static::INTERP_C + 3;
+        }
+
+        if ($p > $maxLine - static::INTERP_C) {
+            throw  new \Exception("No ΔΤ data for JD={$this->jd}");
         }
 
         // Reset pointer if within INTERP_COUNT on upper bound
@@ -734,7 +748,8 @@ class IERS
      * been exceeded. While updating local file sizes are compared to remote
      * file sizes and the files are only updated if they differ in size
      *
-     * @return bool
+     * @return array|bool An array of files that were updated
+     * @throws \Exception
      */
     private function performUpdate()
     {
@@ -745,8 +760,9 @@ class IERS
             }
         }
 
+        $filesUpdated = [];
+
         // Log FTP diff procedure
-        $this->log('Checking for update...');
         $ftp = $this->ftp();
         foreach (static::FILES as $file) {
             // Local file path
@@ -760,13 +776,14 @@ class IERS
             if ($lSize != $rSize) {
                 // Download files if the sizes differ
                 ftp_get($ftp, $lFile, $file, FTP_ASCII);
-                $this->log("Updated > $file");
+                $filesUpdated[] = $file;
             }
         }
 
         // Flag current last update time to now
-        $this->log('Update complete');
         $this->setUpdatedNow();
+
+        return $filesUpdated;
     }
 
     /**
